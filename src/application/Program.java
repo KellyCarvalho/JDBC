@@ -18,21 +18,32 @@ public class Program {
 
 	public static void main(String[] args) {
 		Connection conn =null;
-		PreparedStatement st =null;
+		Statement st =null;
 		try {
 			conn = DB.getConnection();
-			st = conn.prepareStatement(
-					"DELETE FROM Department "
-					+"WHERE "
-					+"id = ?"
-					);
-
-                st.setInt(1, 4);
-			int linhasAfetadas = st.executeUpdate();
-			System.out.println("Linhas afetadas: "+linhasAfetadas);
+			conn.setAutoCommit(false);
+			st = conn.createStatement();
+			int linha1 = st.executeUpdate("UPDATE seller SET BaseSalary =5000 WHERE DepartmentId=1");
+			
+			System.out.println("D1 "+linha1);
+	
+			//simulando erro para melhor entendimento sobre transações
+			int x=1;
+			if(x<2) {
+				throw new SQLException("Erro falso");
+			}
+			//quando há um erro a transação não é completada no banco de dados
+			int linha2 = st.executeUpdate("UPDATE seller SET BaseSalary =4500 WHERE DepartmentId=2");
+			System.out.println("D2 "+linha2);
+			conn.commit();//Se não houver nenhum erro durante a execução do programa a mudança será comitada
 		}
 		catch(SQLException e) {
-		 throw new DbException(e.getMessage());
+		try {
+			conn.rollback();
+			throw new DbException("Roll back, transação não foi concluída, erro causado por: "+e.getMessage());
+		} catch (SQLException e1) {
+			throw new DbException("Erro ao tentar voltar a transação, erro causado por: "+e.getMessage());
+		}
 		}
 		finally {
 			DB.closeStatement(st);
